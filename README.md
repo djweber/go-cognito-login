@@ -9,4 +9,4 @@ supports the environment-based AWS credentials. Make sure they are exported befo
 
 # usage
 
-Run the `gcl` executable and select your user pool and client to retrieve an access token.
+Run the `go-cognito-login` executable and select your user pool and client to retrieve an access token.
