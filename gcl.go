@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/djweber/olog/cmd"
+	"github.com/djweber/go-cognito-login/cmd"
 )
 
 func main() {

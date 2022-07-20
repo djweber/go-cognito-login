@@ -22,8 +22,8 @@ import (
 var UserPoolID string
 
 var rootCmd = &cobra.Command{
-	Use:   "olog",
-	Short: "olog is a simple oauth2 client credentials flow tool",
+	Use:   "gcl",
+	Short: "gcl is a simple oauth2 client credentials flow tool",
 	Run: func(cmd *cobra.Command, args []string) {
 		readEnvs()
 	},
