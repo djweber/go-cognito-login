@@ -1,4 +1,4 @@
-go-cognito-login
+# go-cognito-login
 
 Utility for retrieving Cognito-based OAuth2 client credentials written in Go
 
