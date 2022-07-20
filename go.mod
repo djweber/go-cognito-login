@@ -1,4 +1,4 @@
-module github.com/djweber/olog
+module github.com/djweber/go-cognito-login
 
 go 1.18
 
