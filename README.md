@@ -1,5 +1,5 @@
 # olog
-OAuth2 credentials flow tool written in Go
+Utility for retrieving Cognito-based OAuth2 client credentials written in Go
 
 # configuration
 Create a configuration file at `~/.olog/config.toml` with the following structure:
