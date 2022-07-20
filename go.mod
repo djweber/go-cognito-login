@@ -1,4 +1,4 @@
-module olog
+module github.com/djweber/olog
 
 go 1.18
 
