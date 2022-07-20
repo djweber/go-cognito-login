@@ -1,4 +1,5 @@
-# olog
+# go-cognito-login
+
 Utility for retrieving Cognito-based OAuth2 client credentials written in Go
 
 # prerequisites
@@ -8,4 +9,4 @@ supports the environment-based AWS credentials. Make sure they are exported befo
 
 # usage
 
-Run the `olog` executable and select your user pool and client to retrieve an access token.
+Run the `gcl` executable and select your user pool and client to retrieve an access token.
