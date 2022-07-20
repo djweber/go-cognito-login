@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -161,8 +162,15 @@ func makeRequest(tokenUrl string, co *cognitoidentityprovider.DescribeUserPoolCl
 		panic(err)
 	}
 
-	fmt.Printf("Access Token: %s\n", creds.AccessToken)
-	fmt.Printf("Expires In: %d\n", creds.ExpiresIn)
+	var pJSON bytes.Buffer
+
+	err = json.Indent(&pJSON, data, "", "  ")
+
+	if err != nil {
+		exit(err)
+	}
+
+	fmt.Println(string(pJSON.Bytes()))
 }
 
 func Execute() {
