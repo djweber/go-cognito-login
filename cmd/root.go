@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -18,6 +17,8 @@ import (
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/spf13/cobra"
 )
+
+var UserPoolID string
 
 var rootCmd = &cobra.Command{
 	Use:   "olog",
@@ -28,18 +29,6 @@ var rootCmd = &cobra.Command{
 }
 
 type (
-	config struct {
-		Envs map[string]env
-	}
-	env struct {
-		TokenURL   string `toml:"token_url"`
-		ClientID   string `toml:"client_id"`
-		UserPoolID string `toml:"user_pool_id"`
-	}
-	fzfEnv struct {
-		Name string
-		Env  env
-	}
 	oauthCredentials struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`
@@ -47,50 +36,12 @@ type (
 	}
 )
 
-func readEnvs() {
-	home, err := os.UserHomeDir()
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	f := fmt.Sprintf("%s/.olog/config.toml", home)
-
-	var c config
-
-	_, err = toml.DecodeFile(f, &c)
-
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	envs := []fzfEnv{}
-
-	for k, v := range c.Envs {
-		envs = append(envs, fzfEnv{
-			Name: k,
-			Env:  v,
-		})
-	}
-
-	i, err := fuzzyfinder.Find(
-		envs,
-		func(i int) string {
-			return envs[i].Name
-		},
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	makeRequest(envs[i])
+func exit(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }
 
-func makeRequest(env fzfEnv) {
-	fmt.Printf("Environment: %s\n", env.Name)
+func readEnvs() {
 
 	cfg := &aws.Config{
 		Region:      aws.String("us-east-1"),
@@ -106,9 +57,29 @@ func makeRequest(env fzfEnv) {
 
 	cidp := cognitoidentityprovider.New(sess)
 
-	co, err := cidp.DescribeUserPoolClient(&cognitoidentityprovider.DescribeUserPoolClientInput{
-		ClientId:   &env.Env.ClientID,
-		UserPoolId: &env.Env.UserPoolID,
+	var maxResults int64 = 60
+
+	ups, err := cidp.ListUserPools(&cognitoidentityprovider.ListUserPoolsInput{
+		MaxResults: &maxResults,
+	})
+
+	if err != nil {
+		exit(err)
+	}
+
+	poolIndex, err := fuzzyfinder.Find(
+		ups.UserPools,
+		func(i int) string {
+			return *ups.UserPools[i].Name
+		},
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	up, err := cidp.DescribeUserPool(&cognitoidentityprovider.DescribeUserPoolInput{
+		UserPoolId: ups.UserPools[poolIndex].Id,
 	})
 
 	if err != nil {
@@ -116,6 +87,41 @@ func makeRequest(env fzfEnv) {
 		os.Exit(1)
 	}
 
+	upc, err := cidp.ListUserPoolClients(&cognitoidentityprovider.ListUserPoolClientsInput{
+		UserPoolId: ups.UserPools[poolIndex].Id,
+	})
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	clientIndex, err := fuzzyfinder.Find(
+		upc.UserPoolClients,
+		func(i int) string {
+			return *upc.UserPoolClients[i].ClientName
+		},
+	)
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	co, err := cidp.DescribeUserPoolClient(&cognitoidentityprovider.DescribeUserPoolClientInput{
+		UserPoolId: upc.UserPoolClients[clientIndex].UserPoolId,
+		ClientId:   upc.UserPoolClients[clientIndex].ClientId,
+	})
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	makeRequest(*up.UserPool.Domain, co)
+}
+
+func makeRequest(tokenUrl string, co *cognitoidentityprovider.DescribeUserPoolClientOutput) {
 	params := url.Values{}
 	params.Add("grant_type", `client_credentials`)
 	params.Add("client_id", *co.UserPoolClient.ClientId)
@@ -123,7 +129,7 @@ func makeRequest(env fzfEnv) {
 
 	body := strings.NewReader(params.Encode())
 
-	req, err := http.NewRequest("POST", env.Env.TokenURL, body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://%s/oauth2/token", tokenUrl), body)
 
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

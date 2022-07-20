@@ -1,7 +1,7 @@
 package main
 
 import (
-	"olog/cmd"
+	"github.com/djweber/olog/cmd"
 )
 
 func main() {
